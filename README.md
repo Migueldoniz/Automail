@@ -95,20 +95,3 @@ O servidor iniciará na porta 5000. Abra seu navegador e acesse [http://localhos
 
 A aplicação inicializa o banco de dados SQLite (`automail.db`) automaticamente na primeira vez que é executada.
 
-## Scripts Auxiliares
-
-### `generate_pdfs.py`
-
-Este script converte os arquivos `.txt` da pasta `test_emails` em arquivos `.pdf`. É útil para gerar os arquivos de teste necessários para testar o upload de PDFs.
-
-Para executá-lo, primeiro instale a dependência `fpdf`:
-
-```bash
-pip install fpdf
-```
-
-Em seguida, rode o script a partir da raiz do projeto:
-
-```bash
-python generate_pdfs.py
-```
