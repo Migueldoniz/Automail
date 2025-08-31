@@ -50,7 +50,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0 25px;
-  height: 100px;
+  height: 80px;
   width: 100%;
   box-sizing: border-box;
   position: fixed;
@@ -376,6 +376,10 @@ button:hover:not(:disabled) {
     display: none; /* Hide desktop elements */
   }
 
+  .navbar-brand img {
+    margin-left: 0;
+  }
+
   .open-btn-mobile,
   .navbar-brand-mobile {
     display: block; /* Show mobile elements */
@@ -398,7 +402,7 @@ button:hover:not(:disabled) {
     width: 90%;
     padding-left: 15px;
     padding-right: 15px;
-    margin-top: 100px; /* Adjust for new navbar height */
+    margin-top: 30px; /* Adjust for new navbar height */
     box-sizing: border-box;
   }
 
