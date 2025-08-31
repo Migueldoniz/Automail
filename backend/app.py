@@ -111,7 +111,21 @@ def extract_text_from_pdf(file_stream):
 
 def classify_email_with_ai(text):
     if not model: return "Improdutivo"
-    prompt = f"""Analise o e-mail a seguir e classifique-o como 'Produtivo' ou 'Improdutivo'. Retorne APENAS a palavra 'Produtivo' ou 'Improdutivo'. E-mail: \"{text}\""""
+    
+    prompt = f"""
+        Analise o e-mail a seguir e classifique-o em uma das duas categorias: 'Produtivo' ou 'Improdutivo'.
+
+        Definições das categorias:
+        - Produtivo: Emails que requerem uma ação ou resposta específica (ex.: solicitações de suporte técnico, atualização sobre casos em aberto, dúvidas sobre o sistema).
+        - Improdutivo: Emails que não necessitam de uma ação imediata (ex.: mensagens de felicitações, agradecimentos).
+
+        Retorne APENAS a palavra 'Produtivo' ou 'Improdutivo'.
+
+        E-mail para análise:
+        ---
+        {text}
+        ---
+        """
     try:
         response = model.generate_content(prompt)
         category = response.text.strip()
