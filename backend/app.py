@@ -234,9 +234,13 @@ def process_email():
         'suggestion': suggestion
     })
 
-PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-FRONTEND_FOLDER = os.path.join(os.path.dirname(PROJECT_ROOT), 'frontend')
 
+# Define o caminho para a pasta 'frontend'
+FRONTEND_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
+# Configura o Flask para usar a pasta 'frontend' para servir todos os arquivos estáticos.
+# O static_url_path='' faz com que a rota seja a raiz ('/') em vez do padrão ('/static').
+app.static_folder = FRONTEND_FOLDER
+app.static_url_path = ''
 # --- Rotas para servir o Frontend (Apenas para Desenvolvimento Local) ---
 # Em produção, é melhor usar um serviço de "Static Site" do Render para o frontend.
 @app.route('/', defaults={'path': ''})
@@ -244,17 +248,21 @@ FRONTEND_FOLDER = os.path.join(os.path.dirname(PROJECT_ROOT), 'frontend')
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 
-def serve(path):
-    # Constrói o caminho completo para o arquivo solicitado
-    file_path = os.path.join(FRONTEND_FOLDER, path)
+@app.route('/')
+def serve_index():
+    # Esta rota garante que a página principal seja servida na raiz
+    return app.send_static_file('index.html')
 
-    # Se o caminho for um diretório ou não existir, serve o index.html
-    if not os.path.exists(file_path) or os.path.isdir(file_path):
-        return send_from_directory(FRONTEND_FOLDER, 'index.html')
-    else:
-        return send_from_directory(FRONTEND_FOLDER, path)
+@app.route('/app.html')
+def serve_app_page():
+    # Rota específica para a página principal do app, caso o usuário acesse diretamente
+    return app.send_static_file('app.html')
 
-
+@app.errorhandler(404)
+def not_found(e):
+    # Se nenhuma rota da API ou arquivo estático for encontrado,
+    # serve o index.html. Isso é útil para Single Page Applications (SPAs).
+    return app.send_static_file('index.html')
 # --- Ponto de Entrada da Aplicação ---
 if __name__ == '__main__':
     # Garante que o banco de dados seja criado ao iniciar a aplicação em modo de desenvolvimento.
