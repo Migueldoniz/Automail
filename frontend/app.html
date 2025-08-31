@@ -74,8 +74,8 @@
         // --- Logout Logic ---
         function handleLogout(event) {
             event.preventDefault();
-            fetch('http://127.0.0.1:5000/logout', { method: 'POST', credentials: 'include' })
-                .then(() => window.location.href = 'index.html');
+            fetch('/logout', { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = '/');
         }
         document.getElementById('logout-btn-desktop').addEventListener('click', handleLogout);
         document.getElementById('logout-btn-mobile').addEventListener('click', handleLogout);
@@ -132,7 +132,7 @@
             resultsDiv.style.display = 'none';
 
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/process', {
+                const response = await fetch('/api/process', {
                     method: 'POST',
                     body: formData,
                     credentials: 'include'
@@ -141,7 +141,7 @@
                 // Check for auth error FIRST
                 if (response.status === 401) {
                     alert("Sua sessão expirou. Por favor, faça login novamente.");
-                    window.location.href = 'index.html';
+                    window.location.href = '/';
                     return; // Stop further execution
                 }
 

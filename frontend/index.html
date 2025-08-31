@@ -16,15 +16,46 @@
         </div>
         <div class="login-form">
             <h2 style="text-align: center;">Acesse sua conta</h2>
-            <form action="http://127.0.0.1:5000/login" method="POST">
+            <form id="login-form">
                 <input type="email" name="email" placeholder="Seu e-mail" required>
                 <input type="password" name="password" placeholder="Sua senha" required>
+                <p id="error-message" style="color: red; text-align: center; height: 1em;"></p>
                 <button type="submit">Entrar</button>
             </form>
             <div class="signup-link">
-                <p>Não tem uma conta? <a href="signup.html">Cadastre-se</a></p>
+                <p>Não tem uma conta? <a href="/signup.html">Cadastre-se</a></p>
             </div>
         </div>
     </div>
+
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMessage.textContent = '';
+
+            const formData = new FormData(loginForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                if (response.ok) {
+                    window.location.href = '/app.html'; // Redireciona em caso de sucesso
+                } else {
+                    const errorData = await response.json();
+                    errorMessage.textContent = errorData.error || 'Email ou senha inválidos.';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Erro de conexão com o servidor.';
+            }
+        });
+    </script>
 </body>
 </html>

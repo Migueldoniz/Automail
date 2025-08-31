@@ -17,13 +17,39 @@
     </nav>
     <div class="container">
         <h1>Login</h1>
-        <form id="login-form" action="http://127.0.0.1:5000/login" method="POST">
+        <form id="login-form">
             <div class="input-area">
                 <input type="email" id="email" name="email" placeholder="Seu e-mail" required>
                 <input type="password" id="password" name="password" placeholder="Sua senha" required>
             </div>
+            <p id="error-message" style="color: red; text-align: center;"></p>
             <button type="submit" id="submit-btn">Entrar</button>
         </form>
     </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:5000';
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMessage.textContent = '';
+
+            const formData = new FormData(loginForm);
+
+            const response = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                window.location.href = 'app.html'; // Redireciona em caso de sucesso
+            } else {
+                const errorText = await response.text();
+                errorMessage.textContent = errorText || 'Email ou senha inválidos.';
+            }
+        });
+    </script>
 </body>
 </html>

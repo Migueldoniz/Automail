@@ -1,32 +1,76 @@
 # backend/app.py
 import os
 import pdfplumber
-from flask import Flask, request, jsonify, redirect
+import sqlite3 
+from flask import Flask, request, jsonify, redirect, send_from_directory, g
 from flask_cors import CORS
 from dotenv import load_dotenv
 import google.generativeai as genai
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
+DATABASE = 'automail.db'
+
 # Carrega as variáveis de ambiente
 load_dotenv()
+
+# --- Configuração do Banco de Dados ---
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row
+    return db
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+def init_db():
+    with app.app_context():
+        db = get_db()
+        cursor = db.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                email TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                password_hash TEXT NOT NULL
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS email_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_email TEXT,
+                text TEXT,
+                category TEXT,
+                suggestion TEXT,
+                FOREIGN KEY (user_email) REFERENCES users (email)
+            )
+        ''')
+        # Adiciona um usuário admin padrão se não existir
+        cursor.execute("SELECT * FROM users WHERE email = ?", ("admin@admin.com",))
+        if cursor.fetchone() is None:
+            cursor.execute("INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
+                           ("admin@admin.com", "Admin", generate_password_hash("password")))
+        db.commit()
 
 # --- Configuração da API e Autenticação ---
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-app.secret_key = os.urandom(24)
+# A secret_key DEVE ser um valor fixo e secreto, carregado de variáveis de ambiente.
+# Usar os.urandom(24) gera uma nova chave a cada reinício, invalidando todas as sessões de login.
+# Para o Render, adicione FLASK_SECRET_KEY às suas variáveis de ambiente.
+# Você pode gerar um valor forte em um terminal Python com: import secrets; secrets.token_hex(16)
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "uma-chave-secreta-padrao-para-desenvolvimento")
+
+# Garante que o banco de dados seja criado ao iniciar a aplicação
+init_db()
 
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-# --- Modelos e "Banco de Dados" em Memória ---
-users = {
-    "admin@admin.com": {
-        "password_hash": generate_password_hash("password"),
-        "name": "Admin"
-    }
-}
-email_history = {}
 
 class User(UserMixin):
     def __init__(self, id, name):
@@ -35,48 +79,62 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    if user_id in users:
-        return User(id=user_id, name=users[user_id]["name"])
+    db = get_db()
+    user_data = db.execute('SELECT * FROM users WHERE email = ?', (user_id,)).fetchone()
+    if user_data:
+        return User(id=user_data['email'], name=user_data['name'])
     return None
 
 @login_manager.unauthorized_handler
 def unauthorized():
     if request.path.startswith('/api/'):
         return jsonify(error="Login Required"), 401
-    return redirect("http://127.0.0.1:5500/frontend/index.html")
+    return redirect("/")
 
 # --- Rotas de Autenticação ---
 @app.route('/signup', methods=['POST'])
 def signup():
-    email = request.form.get('email')
-    name = request.form.get('name')
-    password = request.form.get('password')
+    data = request.get_json()
+    email = data.get('email')
+    name = data.get('name')
+    password = data.get('password')
+
     if not email or not name or not password:
-        return 'Todos os campos são obrigatórios!', 400
-    if email in users:
-        return 'Este e-mail já está cadastrado.', 409
-    users[email] = {
-        'password_hash': generate_password_hash(password),
-        'name': name
-    }
-    return redirect("http://127.0.0.1:5500/frontend/index.html")
+        return jsonify(error='Todos os campos são obrigatórios!'), 400
+
+    db = get_db()
+    cursor = db.cursor()
+    try:
+        cursor.execute("INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
+                       (email, name, generate_password_hash(password)))
+        db.commit()
+        return jsonify(message='Cadastro realizado com sucesso!'), 201
+    except sqlite3.IntegrityError:
+        return jsonify(error='Este e-mail já está cadastrado.'), 409
+    finally:
+        pass # A conexão será fechada pelo teardown_appcontext
 
 @app.route('/login', methods=['POST'])
 def login():
-    email = request.form.get('email')
-    password = request.form.get('password')
-    user_data = users.get(email)
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    db = get_db()
+    user_data = db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
+
     if user_data and check_password_hash(user_data['password_hash'], password):
-        user = User(id=email, name=user_data["name"])
+        user = User(id=user_data['email'], name=user_data['name'])
         login_user(user)
-        return redirect("http://127.0.0.1:5500/frontend/app.html")
-    return 'Email ou senha inválidos', 401
+        return jsonify(message='Login bem-sucedido!'), 200
+
+    return jsonify(error='Email ou senha inválidos'), 401
 
 @app.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
-    return redirect("http://127.0.0.1:5500/frontend/index.html")
+    return jsonify(message="Logout bem-sucedido"), 200
 
 @app.route('/api/user')
 @login_required
@@ -87,7 +145,9 @@ def get_current_user():
 @app.route('/api/history')
 @login_required
 def history():
-    user_history = email_history.get(current_user.id, [])
+    db = get_db()
+    history_data = db.execute('SELECT text, category, suggestion FROM email_history WHERE user_email = ? ORDER BY id DESC', (current_user.id,)).fetchall()
+    user_history = [dict(row) for row in history_data]
     return jsonify(user_history)
 
 # Configura a API do Gemini
@@ -156,15 +216,11 @@ def process_email():
     category = classify_email_with_ai(raw_text)
     suggestion = generate_response_with_ai(raw_text, category)
 
-    # Salva no histórico
-    if current_user.id not in email_history:
-        email_history[current_user.id] = []
-    
-    email_history[current_user.id].insert(0, {
-        'text': raw_text[:300],
-        'category': category,
-        'suggestion': suggestion
-    })
+    # Salva no histórico do banco de dados
+    db = get_db()
+    db.execute('INSERT INTO email_history (user_email, text, category, suggestion) VALUES (?, ?, ?, ?)',
+               (current_user.id, raw_text, category, suggestion))
+    db.commit()
 
     return jsonify({
         'category': category,
@@ -173,3 +229,13 @@ def process_email():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+# --- Rotas para servir o Frontend ---
+@app.route('/')
+def serve_index():
+    return send_from_directory('../frontend', 'index.html')
+
+@app.route('/<path:path>')
+def serve_static_files(path):
+    # Garante que rotas como /app.html ou /static/logo.png sejam servidas
+    return send_from_directory('../frontend', path)

@@ -58,22 +58,29 @@
         // --- Logout Logic ---
         function handleLogout(event) {
             event.preventDefault();
-            fetch('http://127.0.0.1:5000/logout', { method: 'POST', credentials: 'include' })
-                .then(() => window.location.href = 'index.html');
+            fetch('/logout', { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = '/');
         }
         document.getElementById('logout-btn-desktop').addEventListener('click', handleLogout);
         document.getElementById('logout-btn-mobile').addEventListener('click', handleLogout);
+
+        // Helper para "escapar" HTML e prevenir vulnerabilidades de XSS (Cross-Site Scripting)
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.appendChild(document.createTextNode(str));
+            return p.innerHTML;
+        }
 
         // --- History Logic ---
         async function fetchHistory() {
             const historyContainer = document.getElementById('history-container');
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/history', { credentials: 'include' });
+                const response = await fetch('/api/history', { credentials: 'include' });
 
                 // Check for auth error FIRST
                 if (response.status === 401) {
                     alert("Sua sessão expirou. Por favor, faça login novamente.");
-                    window.location.href = 'index.html';
+                    window.location.href = '/';
                     return; // Stop further execution
                 }
 
@@ -92,13 +99,13 @@
                     historyHtml += `
                         <div class="history-card">
                             <div class="card-header">
-                                ${item.text.substring(0, 80)}...
+                                ${escapeHTML(item.text.substring(0, 80))}...
                             </div>
                             <div class="card-body">
                                 <p><strong>Texto Completo:</strong></p>
-                                <pre>${item.text}</pre>
-                                <p><strong>Categoria:</strong> ${item.category}</p>
-                                <p><strong>Sugestão:</strong> ${item.suggestion}</p>
+                                <pre>${escapeHTML(item.text)}</pre>
+                                <p><strong>Categoria:</strong> ${escapeHTML(item.category)}</p>
+                                <p><strong>Sugestão:</strong> ${escapeHTML(item.suggestion)}</p>
                             </div>
                         </div>
                     `;

@@ -4,3 +4,4 @@ python-dotenv
 google-generativeai
 pdfplumber
 Flask-Login
+gunicorn
