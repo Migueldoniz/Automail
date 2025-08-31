@@ -21,13 +21,10 @@ load_dotenv()
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'automail.db') # Usa 'automail.db' como padrão para dev local
 
 # --- Criação da Instância da Aplicação Flask ---
-# MOVIDO PARA CÁ: 'app' precisa ser definido antes de ser usado por decoradores ou funções.
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
 
 # A secret_key DEVE ser um valor fixo e secreto, carregado de variáveis de ambiente.
-# Para o Render, adicione FLASK_SECRET_KEY às suas variáveis de ambiente.
-# Você pode gerar um valor forte em um terminal Python com: import secrets; secrets.token_hex(16)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "uma-chave-secreta-padrao-para-desenvolvimento")
 
 
@@ -39,7 +36,6 @@ def get_db():
         db.row_factory = sqlite3.Row
     return db
 
-# AGORA FUNCIONA: @app.teardown_appcontext pode encontrar a variável 'app'
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
@@ -47,7 +43,6 @@ def close_connection(exception):
         db.close()
 
 def init_db():
-    # AGORA FUNCIONA: app.app_context pode encontrar a variável 'app'
     with app.app_context():
         db = get_db()
         cursor = db.cursor()
@@ -68,7 +63,6 @@ def init_db():
                 FOREIGN KEY (user_email) REFERENCES users (email)
             )
         ''')
-        # Adiciona um usuário admin padrão se não existir
         cursor.execute("SELECT * FROM users WHERE email = ?", ("admin@admin.com",))
         if cursor.fetchone() is None:
             cursor.execute("INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
@@ -150,10 +144,8 @@ def signup():
     email = data.get('email')
     name = data.get('name')
     password = data.get('password')
-
     if not email or not name or not password:
         return jsonify(error='Todos os campos são obrigatórios!'), 400
-
     db = get_db()
     try:
         db.execute("INSERT INTO users (email, name, password_hash) VALUES (?, ?, ?)",
@@ -168,15 +160,12 @@ def login():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-
     db = get_db()
     user_data = db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
-
     if user_data and check_password_hash(user_data['password_hash'], password):
         user = User(id=user_data['email'], name=user_data['name'])
         login_user(user)
         return jsonify(message='Login bem-sucedido!'), 200
-
     return jsonify(error='Email ou senha inválidos'), 401
 
 @app.route('/logout', methods=['POST'])
@@ -205,7 +194,6 @@ def history():
 def process_email():
     if not model:
         return jsonify({'error': 'A API do Gemini não foi inicializada corretamente.'}), 500
-    
     raw_text = ""
     if 'file' in request.files:
         file = request.files['file']
@@ -220,55 +208,46 @@ def process_email():
 
     if not raw_text:
         return jsonify({'error': 'Nenhum conteúdo de e-mail fornecido'}), 400
-
     category = classify_email_with_ai(raw_text)
     suggestion = generate_response_with_ai(raw_text, category)
-
     db = get_db()
     db.execute('INSERT INTO email_history (user_email, text, category, suggestion) VALUES (?, ?, ?, ?)',
                (current_user.id, raw_text, category, suggestion))
     db.commit()
-
     return jsonify({
         'category': category,
         'suggestion': suggestion
     })
 
+# --- Rotas para servir o Frontend (Versão FINAL E SIMPLIFICADA) ---
 
-# Define o caminho para a pasta 'frontend'
+# Define o caminho absoluto para a pasta 'frontend'
 FRONTEND_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
-# Configura o Flask para usar a pasta 'frontend' para servir todos os arquivos estáticos.
-# O static_url_path='' faz com que a rota seja a raiz ('/') em vez do padrão ('/static').
-app.static_folder = FRONTEND_FOLDER
-app.static_url_path = ''
-# --- Rotas para servir o Frontend (Apenas para Desenvolvimento Local) ---
-# Em produção, é melhor usar um serviço de "Static Site" do Render para o frontend.
+
+# Rota "catch-all" para servir o frontend.
+# IMPORTANTE: Ela deve vir DEPOIS de todas as suas rotas de API (como /api/process, /login, etc).
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+def serve_frontend(path):
+    # Constrói o caminho completo para o arquivo solicitado
+    file_path = os.path.join(FRONTEND_FOLDER, path)
 
-@app.route('/')
-def serve_index():
-    # Esta rota garante que a página principal seja servida na raiz
-    return app.send_static_file('index.html')
+    # Se o caminho solicitado for um arquivo que existe, serve ele diretamente
+    # Ex: /style.css, /static/logo.png
+    if path != "" and os.path.exists(file_path):
+        return send_from_directory(FRONTEND_FOLDER, path)
+    # Caso contrário (se o caminho for a raiz "/" ou um arquivo que não existe),
+    # serve o 'index.html' principal.
+    else:
+        return send_from_directory(FRONTEND_FOLDER, 'index.html')
 
-@app.route('/app.html')
-def serve_app_page():
-    # Rota específica para a página principal do app, caso o usuário acesse diretamente
-    return app.send_static_file('app.html')
 
-@app.errorhandler(404)
-def not_found(e):
-    # Se nenhuma rota da API ou arquivo estático for encontrado,
-    # serve o index.html. Isso é útil para Single Page Applications (SPAs).
-    return app.send_static_file('index.html')
 # --- Ponto de Entrada da Aplicação ---
 if __name__ == '__main__':
     # Garante que o banco de dados seja criado ao iniciar a aplicação em modo de desenvolvimento.
     init_db()
     app.run(debug=True, port=5000)
 else:
-    # Quando o Gunicorn importa o app, ele pode inicializar o banco de dados se necessário.
-    # Esta chamada garante que a tabela exista antes que o primeiro request chegue.
+    # Quando o Gunicorn importa o app, ele inicializa o banco de dados se necessário.
     init_db()
+
