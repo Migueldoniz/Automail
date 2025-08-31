@@ -406,7 +406,27 @@ button:hover:not(:disabled) {
     box-sizing: border-box;
   }
 
-  
+  .login-form {
+    margin-top: -20px;
+  }
+
+  .info-gif{
+    max-width: 100px;
+    margin: 0;
+  }
+
+  .info-section {
+    margin-top: -20px;
+  }
+
+  .info-section p {
+    margin-bottom: 0;
+    font-size: small;
+  }
+
+  .info-section h1 {
+    margin: 0;
+  }
 
   h1 {
     font-size: 1.2rem;
@@ -421,5 +441,29 @@ button:hover:not(:disabled) {
   .landing-container {
     grid-template-columns: 1fr;
     gap: 30px;
+  }
+
+  #error-message {
+    margin: 11px 0 11px 0;
+    font-size: small;
+    height: 0 !important;
+  }
+
+  #login-form button {
+    margin-top: 0;
+    font-size: 1em;
+    padding: 10px;
+  }
+
+  #signup-form button {
+    margin-top: 0;
+    font-size: 1em;
+    padding: 10px;
+  }
+
+  .login-form input, .input-area input {
+    margin-bottom: 12px;
+    padding: 10px;
+    font-size: 0.8em;
   }
 }
