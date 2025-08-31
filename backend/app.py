@@ -234,15 +234,25 @@ def process_email():
         'suggestion': suggestion
     })
 
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_FOLDER = os.path.join(os.path.dirname(PROJECT_ROOT), 'frontend')
+
 # --- Rotas para servir o Frontend (Apenas para Desenvolvimento Local) ---
 # Em produção, é melhor usar um serviço de "Static Site" do Render para o frontend.
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+
 def serve(path):
-    if path != "" and os.path.exists(os.path.join('../frontend', path)):
-        return send_from_directory('../frontend', path)
+    # Constrói o caminho completo para o arquivo solicitado
+    file_path = os.path.join(FRONTEND_FOLDER, path)
+
+    # Se o caminho for um diretório ou não existir, serve o index.html
+    if not os.path.exists(file_path) or os.path.isdir(file_path):
+        return send_from_directory(FRONTEND_FOLDER, 'index.html')
     else:
-        return send_from_directory('../frontend', 'index.html')
+        return send_from_directory(FRONTEND_FOLDER, path)
 
 
 # --- Ponto de Entrada da Aplicação ---
