@@ -44,7 +44,7 @@ body {
 
 /* --- Navbar Styles --- */
 .navbar {
-  background-color: #f7fff7;
+  background-color: #fff;
   border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
@@ -402,7 +402,7 @@ button:hover:not(:disabled) {
     width: 90%;
     padding-left: 15px;
     padding-right: 15px;
-    margin-top: 30px; /* Adjust for new navbar height */
+    margin-top: 100px; /* Adjust for new navbar height */
     box-sizing: border-box;
   }
 
