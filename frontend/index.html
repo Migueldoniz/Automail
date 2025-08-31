@@ -23,7 +23,7 @@
                 <button type="submit">Entrar</button>
             </form>
             <div class="signup-link">
-                <p>Não tem uma conta? <a href="/signup.html">Cadastre-se</a></p>
+                <p>Não tem uma conta? <a href="./signup.html">Cadastre-se</a></p>
             </div>
         </div>
     </div>
@@ -47,7 +47,7 @@
                 });
 
                 if (response.ok) {
-                    window.location.href = '/app.html'; // Redireciona em caso de sucesso
+                    window.location.href = './app.html'; // Redireciona em caso de sucesso
                 } else {
                     const errorData = await response.json();
                     errorMessage.textContent = errorData.error || 'Email ou senha inválidos.';

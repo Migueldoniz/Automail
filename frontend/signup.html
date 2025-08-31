@@ -24,7 +24,7 @@
             <button type="submit">Cadastrar</button>
         </form>
         <div class="signup-link">
-            <p>Já tem uma conta? <a href="/index.html">Faça login</a></p>
+            <p>Já tem uma conta? <a href="./index.html">Faça login</a></p>
         </div>
     </div>
 
@@ -50,7 +50,7 @@
             const responseData = await response.json();
             if (response.ok) {
                 successMessage.textContent = 'Cadastro realizado! Redirecionando para o login...';
-                setTimeout(() => window.location.href = '/index.html', 2000);
+                setTimeout(() => window.location.href = './index.html', 2000);
             } else {
                 errorMessage.textContent = responseData.error || 'Ocorreu um erro.';
             }

@@ -10,21 +10,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 
 # --- Configuração Inicial e Constantes ---
-
-# Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
-
-# PONTO CRÍTICO: Configuração do Banco de Dados para o Render
-# O Render apaga arquivos locais. Use um "Persistent Disk".
-# 1. Crie um disco no Render com o "Mount Path" de, por exemplo, /data
-# 2. Defina uma variável de ambiente DATABASE_PATH no Render para /data/automail.db
-DATABASE_PATH = os.getenv('DATABASE_PATH', 'automail.db') # Usa 'automail.db' como padrão para dev local
+DATABASE_PATH = os.getenv('DATABASE_PATH', 'automail.db')
 
 # --- Criação da Instância da Aplicação Flask ---
-app = Flask(__name__)
-CORS(app, supports_credentials=True)
+# A definição da pasta estática é feita aqui para ser mais limpa
+FRONTEND_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
 
-# A secret_key DEVE ser um valor fixo e secreto, carregado de variáveis de ambiente.
+app = Flask(__name__, static_folder=FRONTEND_FOLDER, static_url_path='')
+CORS(app, supports_credentials=True)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "uma-chave-secreta-padrao-para-desenvolvimento")
 
 
@@ -103,7 +97,7 @@ except Exception as e:
     model = None
 
 
-# --- Funções Auxiliares ---
+# --- Funções Auxiliares (sem alterações) ---
 def extract_text_from_pdf(file_stream):
     text = ""
     try:
@@ -137,14 +131,12 @@ def generate_response_with_ai(email_text, category):
         return "Não foi possível gerar uma sugestão."
 
 
-# --- Rotas de Autenticação ---
+# --- Rotas da API (sem alterações) ---
 @app.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
-    email = data.get('email')
-    name = data.get('name')
-    password = data.get('password')
-    if not email or not name or not password:
+    email, name, password = data.get('email'), data.get('name'), data.get('password')
+    if not all([email, name, password]):
         return jsonify(error='Todos os campos são obrigatórios!'), 400
     db = get_db()
     try:
@@ -158,8 +150,7 @@ def signup():
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
+    email, password = data.get('email'), data.get('password')
     db = get_db()
     user_data = db.execute('SELECT * FROM users WHERE email = ?', (email,)).fetchone()
     if user_data and check_password_hash(user_data['password_hash'], password):
@@ -179,15 +170,12 @@ def logout():
 def get_current_user():
     return jsonify({'name': current_user.name, 'email': current_user.id})
 
-
-# --- Rotas da API Principal ---
 @app.route('/api/history')
 @login_required
 def history():
     db = get_db()
     history_data = db.execute('SELECT text, category, suggestion FROM email_history WHERE user_email = ? ORDER BY id DESC', (current_user.id,)).fetchall()
-    user_history = [dict(row) for row in history_data]
-    return jsonify(user_history)
+    return jsonify([dict(row) for row in history_data])
 
 @app.route('/api/process', methods=['POST'])
 @login_required
@@ -197,15 +185,11 @@ def process_email():
     raw_text = ""
     if 'file' in request.files:
         file = request.files['file']
-        if file.filename.endswith('.txt'):
-            raw_text = file.read().decode('utf-8')
-        elif file.filename.endswith('.pdf'):
-            raw_text = extract_text_from_pdf(file)
-        else:
-            return jsonify({'error': 'Formato de arquivo inválido. Use .txt ou .pdf'}), 400
+        if file.filename.endswith('.txt'): raw_text = file.read().decode('utf-8')
+        elif file.filename.endswith('.pdf'): raw_text = extract_text_from_pdf(file)
+        else: return jsonify({'error': 'Formato de arquivo inválido. Use .txt ou .pdf'}), 400
     elif 'email_text' in request.form:
         raw_text = request.form['email_text']
-
     if not raw_text:
         return jsonify({'error': 'Nenhum conteúdo de e-mail fornecido'}), 400
     category = classify_email_with_ai(raw_text)
@@ -214,40 +198,32 @@ def process_email():
     db.execute('INSERT INTO email_history (user_email, text, category, suggestion) VALUES (?, ?, ?, ?)',
                (current_user.id, raw_text, category, suggestion))
     db.commit()
-    return jsonify({
-        'category': category,
-        'suggestion': suggestion
-    })
+    return jsonify({'category': category, 'suggestion': suggestion})
 
-# --- Rotas para servir o Frontend (Versão FINAL E SIMPLIFICADA) ---
 
-# Define o caminho absoluto para a pasta 'frontend'
-FRONTEND_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
-
-# Rota "catch-all" para servir o frontend.
-# IMPORTANTE: Ela deve vir DEPOIS de todas as suas rotas de API (como /api/process, /login, etc).
+# --- Rota para servir o Frontend ---
+# O Flask agora está configurado para servir arquivos estáticos da pasta 'frontend'.
+# Esta rota 'catch-all' garante que se um usuário recarregar a página em /app.html ou
+# tentar acessar uma rota que não é da API, ele receberá a página principal.
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
-def serve_frontend(path):
-    # Constrói o caminho completo para o arquivo solicitado
-    file_path = os.path.join(FRONTEND_FOLDER, path)
-
-    # Se o caminho solicitado for um arquivo que existe, serve ele diretamente
-    # Ex: /style.css, /static/logo.png
+def catch_all(path):
+    # Verifica se o arquivo solicitado existe na pasta estática
+    file_path = os.path.join(app.static_folder, path)
     if path != "" and os.path.exists(file_path):
-        return send_from_directory(FRONTEND_FOLDER, path)
-    # Caso contrário (se o caminho for a raiz "/" ou um arquivo que não existe),
-    # serve o 'index.html' principal.
+        # Se o arquivo existir (ex: /app.html, /style.css), serve-o.
+        # O próprio Flask já faz isso por causa da configuração 'static_folder',
+        # mas esta verificação explícita é uma segurança extra.
+        return send_from_directory(app.static_folder, path)
     else:
-        return send_from_directory(FRONTEND_FOLDER, 'index.html')
+        # Se não for um arquivo, serve a página de entrada principal.
+        return send_from_directory(app.static_folder, 'index.html')
 
 
 # --- Ponto de Entrada da Aplicação ---
 if __name__ == '__main__':
-    # Garante que o banco de dados seja criado ao iniciar a aplicação em modo de desenvolvimento.
     init_db()
     app.run(debug=True, port=5000)
 else:
-    # Quando o Gunicorn importa o app, ele inicializa o banco de dados se necessário.
     init_db()
 

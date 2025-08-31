@@ -12,7 +12,7 @@
     <!-- Sidebar for Mobile -->
     <div id="mobile-sidebar" class="sidebar">
         <a href="javascript:void(0)" class="close-btn">&times;</a>
-        <a href="history.html" class="sidebar-link">Histórico</a>
+        <a href="./history.html" class="sidebar-link">Histórico</a>
         <a href="#" id="logout-btn-mobile" class="sidebar-link">Logout</a>
     </div>
 
@@ -30,7 +30,7 @@
         </div>
         <div class="navbar-right">
             <ul class="navbar-nav-desktop">
-                <li class="nav-item"><a href="history.html" class="nav-link">Histórico</a></li>
+                <li class="nav-item"><a href="./history.html" class="nav-link">Histórico</a></li>
                 <li class="nav-item"><a href="#" id="logout-btn-desktop" class="nav-link">Logout</a></li>
             </ul>
         </div>
@@ -75,7 +75,7 @@
         function handleLogout(event) {
             event.preventDefault();
             fetch('/logout', { method: 'POST', credentials: 'include' })
-                .then(() => window.location.href = '/');
+                .then(() => window.location.href = './index.html');
         }
         document.getElementById('logout-btn-desktop').addEventListener('click', handleLogout);
         document.getElementById('logout-btn-mobile').addEventListener('click', handleLogout);
@@ -141,7 +141,7 @@
                 // Check for auth error FIRST
                 if (response.status === 401) {
                     alert("Sua sessão expirou. Por favor, faça login novamente.");
-                    window.location.href = '/';
+                    window.location.href = './index.html';
                     return; // Stop further execution
                 }
 
