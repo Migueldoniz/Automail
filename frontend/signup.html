@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - AutoMail</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand"><img src="static/logo.png" alt="AutoMail logo"></div>
+
+    </nav>
+    <div class="container">
+        <h1>Crie sua Conta</h1>
+        <form action="http://127.0.0.1:5000/signup" method="POST">
+            <div class="input-area">
+                <input type="text" name="name" placeholder="Seu nome completo" required>
+                <input type="email" name="email" placeholder="Seu e-mail" required>
+                <input type="password" name="password" placeholder="Crie uma senha" required>
+            </div>
+            <button type="submit">Cadastrar</button>
+        </form>
+    </div>
+</body>
+</html>

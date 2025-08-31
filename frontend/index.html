@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao AutoMail</title>
+    <link rel="stylesheet" href="style.css">
+    
+</head>
+<body>
+    <div class="container landing-container">
+        <div class="info-section">
+            <img src="static/gif.gif" alt="Animação demonstrativa" class="info-gif">
+            <h1>Otimize sua Caixa de Entrada com IA</h1>
+            <p>O AutoMail classifica seus e-mails, identifica prioridades e sugere respostas, permitindo que você foque no que realmente importa.<br> Deixe a inteligência artificial trabalhar por você!</p>
+        </div>
+        <div class="login-form">
+            <h2 style="text-align: center;">Acesse sua conta</h2>
+            <form action="http://127.0.0.1:5000/login" method="POST">
+                <input type="email" name="email" placeholder="Seu e-mail" required>
+                <input type="password" name="password" placeholder="Sua senha" required>
+                <button type="submit">Entrar</button>
+            </form>
+            <div class="signup-link">
+                <p>Não tem uma conta? <a href="signup.html">Cadastre-se</a></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
