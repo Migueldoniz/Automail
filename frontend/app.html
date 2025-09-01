@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoMail - App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="static/logo.ico" type="image/x-icon">
+</head>
+<body>
+
+    <!-- Sidebar for Mobile -->
+    <div id="mobile-sidebar" class="sidebar">
+        <a href="javascript:void(0)" class="close-btn">&times;</a>
+        <a href="./history.html" class="sidebar-link">Histórico</a>
+        <a href="#" id="logout-btn-mobile" class="sidebar-link">Logout</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="javascript:void(0)" class="open-btn-mobile"><i class="fas fa-bars"></i></a>
+            <div class="navbar-brand navbar-brand-desktop">
+                <img src="static/logo.png" alt="AutoMail logo">
+            </div>
+        </div>
+        <div class="navbar-center">
+            <div class="navbar-brand navbar-brand-mobile">
+                <img src="static/logo.png" alt="AutoMail logo">
+            </div>
+        </div>
+        <div class="navbar-right">
+            <ul class="navbar-nav-desktop">
+                <li class="nav-item"><a href="./history.html" class="nav-link">Histórico</a></li>
+                <li class="nav-item"><a href="#" id="logout-btn-desktop" class="nav-link">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>AutoMail</h1>
+        <h3>Uma ferramenta inteligente para análise de e-mails</h3>
+        <form id="email-form">
+            <div class="input-area">
+                <textarea id="email-text" placeholder="Cole o texto do e-mail aqui..."></textarea>
+                <div class="or-separator">OU</div>
+                <div id="drop-area">
+                    <p>Arraste e solte um arquivo .txt ou .pdf aqui, ou clique para selecionar</p>
+                    <p id="file-name"></p>
+                </div>
+                <input type="file" id="file-input" accept=".txt,.pdf">
+            </div>
+            <button type="submit" id="submit-btn">Analisar E-mail</button>
+        </form>
+        <div id="results">
+            <h2><span id="result-category"></span> <button id="copy-btn">Copiar</button></h2>
+            <p id="result-suggestion"></p>
+        </div>
+    </div>
+
+    <script>
+        // --- Sidebar Logic ---
+        const openBtn = document.querySelector('.open-btn-mobile');
+        const closeBtn = document.querySelector('.close-btn');
+        const sidebar = document.getElementById('mobile-sidebar');
+
+        openBtn.addEventListener('click', () => {
+            sidebar.style.width = '250px';
+        });
+
+        closeBtn.addEventListener('click', () => {
+            sidebar.style.width = '0';
+        });
+
+        // --- Logout Logic ---
+        function handleLogout(event) {
+            event.preventDefault();
+            fetch('/logout', { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = './index.html');
+        }
+        document.getElementById('logout-btn-desktop').addEventListener('click', handleLogout);
+        document.getElementById('logout-btn-mobile').addEventListener('click', handleLogout);
+
+        // --- Email Analysis Form Logic ---
+        const dropArea = document.getElementById('drop-area');
+        const fileInput = document.getElementById('file-input');
+        const fileNameDisplay = document.getElementById('file-name');
+        const emailForm = document.getElementById('email-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const emailText = document.getElementById('email-text');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, e => { e.preventDefault(); e.stopPropagation(); }, false);
+        });
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('highlight'), false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('highlight'), false);
+        });
+
+        dropArea.addEventListener('click', () => fileInput.click());
+        dropArea.addEventListener('drop', e => {
+            fileInput.files = e.dataTransfer.files;
+            updateFileName();
+        });
+        fileInput.addEventListener('change', updateFileName);
+
+        function updateFileName() {
+            fileNameDisplay.textContent = fileInput.files.length > 0 ? fileInput.files[0].name : '';
+        }
+
+        emailForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const file = fileInput.files[0];
+            const text = emailText.value.trim();
+            if (!file && text === '') {
+                alert('Por favor, insira um texto ou envie um arquivo.');
+                return;
+            }
+
+            submitBtn.textContent = 'Analisando...';
+            submitBtn.disabled = true;
+
+            const formData = new FormData();
+            if (file) {
+                formData.append('file', file);
+            } else {
+                formData.append('email_text', text);
+            }
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/process', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                });
+
+                // Check for auth error FIRST
+                if (response.status === 401) {
+                    alert("Sua sessão expirou. Por favor, faça login novamente.");
+                    window.location.href = './index.html';
+                    return; // Stop further execution
+                }
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro desconhecido no servidor.');
+                }
+
+                document.getElementById('result-category').textContent = `Categoria: ${data.category}`;
+                document.getElementById('result-suggestion').textContent = data.suggestion;
+                resultsDiv.className = data.category;
+                resultsDiv.style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('result-category').textContent = 'Erro';
+                document.getElementById('result-suggestion').textContent = error.message;
+                resultsDiv.className = 'Improdutivo';
+                resultsDiv.style.display = 'block';
+            } finally {
+                submitBtn.textContent = 'Analisar E-mail';
+                submitBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('copy-btn').addEventListener('click', () => {
+            const suggestionText = document.getElementById('result-suggestion').textContent;
+            navigator.clipboard.writeText(suggestionText).then(() => {
+                alert('Sugestão copiada para a área de transferência!');
+            });
+        });
+    </script>
+</body>
+</html>

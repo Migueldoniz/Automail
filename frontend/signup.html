@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - AutoMail</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="static/logo.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <h1>Crie sua Conta</h1>
+        <form id="signup-form">
+            <div class="input-area">
+                <input type="text" name="name" placeholder="Seu nome completo" required>
+                <input type="email" name="email" placeholder="Seu e-mail" required>
+                <input type="password" name="password" placeholder="Crie uma senha" required>
+            </div>
+            <button type="submit">Cadastrar</button>
+            <p id="error-message" style="color: red; text-align: center; height: 1em;"></p>
+            <p id="success-message" style="color: green; text-align: center; height: 1em;"></p>
+        </form>
+        <div class="signup-link">
+            <p>Já tem uma conta? <a href="./index.html">Faça login</a></p>
+        </div>
+    </div>
+
+    <script>
+        const signupForm = document.getElementById('signup-form');
+        const errorMessage = document.getElementById('error-message');
+        const successMessage = document.getElementById('success-message');
+
+        signupForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMessage.textContent = '';
+            successMessage.textContent = '';
+
+            const formData = new FormData(signupForm);
+            const data = Object.fromEntries(formData.entries());
+
+            const response = await fetch('/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+
+            const responseData = await response.json();
+            if (response.ok) {
+                successMessage.textContent = 'Cadastro realizado! Redirecionando para o login...';
+                setTimeout(() => window.location.href = './index.html', 2000);
+            } else {
+                errorMessage.textContent = responseData.error || 'Ocorreu um erro.';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao AutoMail</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="static/logo.ico" type="image/x-icon">
+    <style>
+        @media (max-width: 768px) {
+            .landing-container {
+                margin-top: 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container landing-container">
+        <div class="info-section">
+            <img src="static/gif.gif" alt="Animação demonstrativa" class="info-gif">
+            <h1>Otimize sua Caixa de Entrada com IA</h1>
+            <p>O AutoMail classifica seus e-mails, identifica prioridades e sugere respostas, permitindo que você foque no que realmente importa.<br> Deixe a inteligência artificial trabalhar por você!</p>
+        </div>
+        <div class="login-form">
+            <h2 style="text-align: center;">Acesse sua conta</h2>
+            <form id="login-form">
+                <input type="email" name="email" placeholder="Seu e-mail" required>
+                <input type="password" name="password" placeholder="Sua senha" required>
+                <button type="submit">Entrar</button>
+                <p id="error-message" style="color: red; text-align: center; height: 1em;"></p>
+            </form>
+            <div class="signup-link">
+                <p>Não tem uma conta? <a href="./signup.html">Cadastre-se</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('login-form');
+        const errorMessage = document.getElementById('error-message');
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorMessage.textContent = '';
+
+            const formData = new FormData(loginForm);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                });
+
+                if (response.ok) {
+                    window.location.href = './app.html'; // Redireciona em caso de sucesso
+                } else {
+                    const errorData = await response.json();
+                    errorMessage.textContent = errorData.error || 'Email ou senha inválidos.';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Erro de conexão com o servidor.';
+            }
+        });
+    </script>
+</body>
+</html>

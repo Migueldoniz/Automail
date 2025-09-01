@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórico - AutoMail</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="static/logo.ico" type="image/x-icon">
+</head>
+<body>
+
+    <!-- Sidebar for Mobile -->
+    <div id="mobile-sidebar" class="sidebar">
+        <a href="javascript:void(0)" class="close-btn">&times;</a>
+        <a href="./app.html" class="sidebar-link">Analisar E-mail</a>
+        <a href="#" id="logout-btn-mobile" class="sidebar-link">Logout</a>
+    </div>
+
+    <nav class="navbar">
+        <div class="navbar-left">
+            <a href="javascript:void(0)" class="open-btn-mobile"><i class="fas fa-bars"></i></a>
+            <div class="navbar-brand navbar-brand-desktop">
+                <img src="static/logo.png" alt="AutoMail logo">
+            </div>
+        </div>
+        <div class="navbar-center">
+            <div class="navbar-brand navbar-brand-mobile">
+                <img src="static/logo.png" alt="AutoMail logo">
+            </div>
+        </div>
+        <div class="navbar-right">
+            <ul class="navbar-nav-desktop">
+                <li class="nav-item"><a href="./app.html" class="nav-link">Analisar E-mail</a></li>
+                <li class="nav-item"><a href="#" id="logout-btn-desktop" class="nav-link">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Histórico de Análises</h1>
+        <div id="history-container"></div>
+    </div>
+
+    <script>
+        // --- Sidebar Logic ---
+        const openBtn = document.querySelector('.open-btn-mobile');
+        const closeBtn = document.querySelector('.close-btn');
+        const sidebar = document.getElementById('mobile-sidebar');
+
+        openBtn.addEventListener('click', () => {
+            sidebar.style.width = '250px';
+        });
+
+        closeBtn.addEventListener('click', () => {
+            sidebar.style.width = '0';
+        });
+
+        // --- Logout Logic ---
+        function handleLogout(event) {
+            event.preventDefault();
+            fetch('/logout', { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = './index.html');
+        }
+        document.getElementById('logout-btn-desktop').addEventListener('click', handleLogout);
+        document.getElementById('logout-btn-mobile').addEventListener('click', handleLogout);
+
+        // Helper para "escapar" HTML e prevenir vulnerabilidades de XSS (Cross-Site Scripting)
+        function escapeHTML(str) {
+            const p = document.createElement('p');
+            p.appendChild(document.createTextNode(str));
+            return p.innerHTML;
+        }
+
+        // --- History Logic ---
+        async function fetchHistory() {
+            const historyContainer = document.getElementById('history-container');
+            try {
+                const response = await fetch('/api/history', { credentials: 'include' });
+
+                // Check for auth error FIRST
+                if (response.status === 401) {
+                    alert("Sua sessão expirou. Por favor, faça login novamente.");
+                    window.location.href = './index.html';
+                    return; // Stop further execution
+                }
+
+                if (!response.ok) {
+                    historyContainer.innerHTML = '<p>Não foi possível carregar o histórico.</p>';
+                    return;
+                }
+                
+                const history = await response.json();
+                if (history.length === 0) {
+                    historyContainer.innerHTML = '<p>Nenhuma análise encontrada.</p>';
+                    return;
+                }
+                let historyHtml = '';
+                history.forEach(item => {
+                    historyHtml += `
+                        <div class="history-card">
+                            <div class="card-header">
+                                ${escapeHTML(item.text.substring(0, 80))}...
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Texto Completo:</strong></p>
+                                <pre>${escapeHTML(item.text)}</pre>
+                                <p><strong>Categoria:</strong> ${escapeHTML(item.category)}</p>
+                                <p><strong>Sugestão:</strong> ${escapeHTML(item.suggestion)}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                historyContainer.innerHTML = historyHtml;
+
+                document.querySelectorAll('.card-header').forEach(header => {
+                    header.addEventListener('click', () => {
+                        const cardBody = header.nextElementSibling;
+                        header.parentElement.classList.toggle('active');
+                        if (cardBody.style.maxHeight) {
+                            cardBody.style.maxHeight = null;
+                        } else {
+                            cardBody.style.maxHeight = cardBody.scrollHeight + "px";
+                        }
+                    });
+                });
+
+            } catch (error) {
+                historyContainer.innerHTML = '<p>Erro ao carregar o histórico.</p>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchHistory);
+    </script>
+</body>
+</html>

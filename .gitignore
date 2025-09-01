@@ -1,0 +1,11 @@
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Environment
+.venv
+venv/
+ENV/
+*_pdfs.py
